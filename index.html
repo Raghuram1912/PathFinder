@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PathFinder — Interactive shortest path algorithm visualizer. Explore Dijkstra, Bellman-Ford, BFS, and A* with step-by-step animation.">
+  <title>PathFinder — Shortest Path Visualizer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="app-header" role="banner">
+    <div class="app-logo">
+      <div class="app-logo-icon" aria-hidden="true">P</div>
+      <div>
+        <h1>PathFinder</h1>
+        <div class="subtitle">Shortest Path Visualizer</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-sm" id="btn-compare" data-tooltip="Compare Algorithms" aria-label="Compare algorithms">
+        ⚖️ Compare
+      </button>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme">☀️</button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       MAIN LAYOUT: Canvas + Sidebar
+       ============================================================ -->
+  <main class="app-main">
+
+    <!-- ==================== CANVAS AREA ==================== -->
+    <section class="canvas-area" aria-label="Graph canvas">
+
+      <!-- Canvas Toolbar -->
+      <div class="canvas-toolbar" role="toolbar" aria-label="Graph editing tools">
+        <div class="toolbar-group">
+          <button class="btn btn-sm" id="tool-addNode" data-tooltip="Add Node (click canvas)" aria-label="Add node tool">
+            ⊕ Node
+          </button>
+          <button class="btn btn-sm" id="tool-addEdge" data-tooltip="Add Edge (drag node to node)" aria-label="Add edge tool">
+            🔗 Edge
+          </button>
+          <button class="btn btn-sm" id="tool-move" data-tooltip="Move Node (drag)" aria-label="Move tool">
+            ✋ Move
+          </button>
+          <button class="btn btn-sm" id="tool-delete" data-tooltip="Delete (click node or edge)" aria-label="Delete tool">
+            🗑 Delete
+          </button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="toolbar-group">
+          <button class="btn btn-sm" id="tool-selectSource" data-tooltip="Set Source Node" aria-label="Select source node">
+            🟢 Source
+          </button>
+          <button class="btn btn-sm" id="tool-selectDest" data-tooltip="Set Destination Node" aria-label="Select destination node">
+            🔴 Dest
+          </button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="toolbar-group">
+          <button class="btn btn-sm" id="btn-undo" data-tooltip="Undo (Ctrl+Z)" aria-label="Undo">
+            ↩ Undo
+          </button>
+          <button class="btn btn-sm btn-danger" id="btn-clear" data-tooltip="Clear entire canvas" aria-label="Clear canvas">
+            ✕ Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- SVG Canvas -->
+      <div class="canvas-wrapper">
+        <svg id="graph-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graph visualization canvas"></svg>
+
+        <!-- Empty state overlay -->
+        <div class="canvas-empty-state" id="canvas-empty-state">
+          <h3>Click anywhere to add a node</h3>
+          <p>Select "⊕ Node" tool, then click the canvas.<br>Drag between nodes to add edges.</p>
+        </div>
+      </div>
+
+      <!-- Weight input popup (positioned absolutely) -->
+      <div class="weight-input-popup" id="weight-input-popup" role="dialog" aria-label="Enter edge weight">
+        <input type="number" id="weight-input" value="1" step="1" aria-label="Edge weight">
+        <button class="btn btn-sm btn-success" id="weight-input-ok">✓</button>
+        <button class="btn btn-sm" id="weight-input-cancel">✕</button>
+      </div>
+    </section>
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar" role="complementary" aria-label="Control panels">
+
+      <!-- ---- Algorithm Selection ---- -->
+      <div class="card" id="card-algorithm">
+        <div class="card-header">
+          <h3><span class="card-icon">⚡</span> Algorithm</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="algorithm-select">Algorithm</label>
+            <select id="algorithm-select" aria-label="Select algorithm">
+              <option value="dijkstra">Dijkstra's Algorithm</option>
+              <option value="bellmanFord">Bellman-Ford</option>
+              <option value="bfs">BFS (Unweighted)</option>
+              <option value="aStar">A* Search</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="source-select">Source</label>
+              <select id="source-select" aria-label="Select source node">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="dest-select">Destination</label>
+              <select id="dest-select" aria-label="Select destination node">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary w-full" id="btn-run" aria-label="Run algorithm">
+            ▶ Run Algorithm
+          </button>
+        </div>
+      </div>
+
+      <!-- ---- Playback ---- -->
+      <div class="card" id="card-playback">
+        <div class="card-header">
+          <h3><span class="card-icon">🎬</span> Playback</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="playback-controls">
+            <button class="btn btn-icon btn-sm" id="btn-reset" data-tooltip="Reset" aria-label="Reset playback">⏮</button>
+            <button class="btn btn-icon btn-sm" id="btn-step-back" data-tooltip="Step Back (←)" aria-label="Step back">⏪</button>
+            <button class="btn btn-icon btn-play" id="btn-play" data-tooltip="Play/Pause (Space)" aria-label="Play or pause">▶</button>
+            <button class="btn btn-icon btn-sm" id="btn-step-fwd" data-tooltip="Step Forward (→)" aria-label="Step forward">⏩</button>
+          </div>
+          <div class="speed-control">
+            <label for="speed-slider">Speed</label>
+            <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1" aria-label="Playback speed">
+            <span class="speed-value" id="speed-value">1.0s</span>
+          </div>
+          <div class="step-indicator" id="step-indicator">No algorithm running</div>
+        </div>
+      </div>
+
+      <!-- ---- Results ---- -->
+      <div class="card" id="card-results">
+        <div class="card-header">
+          <h3><span class="card-icon">📊</span> Results</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body" id="results-card-body">
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">Run an algorithm to see results</div>
+          </div>
+          <div class="results-path hidden" id="results-path"></div>
+          <div class="results-stats hidden" id="results-stats"></div>
+        </div>
+      </div>
+
+      <!-- ---- Distance Table ---- -->
+      <div class="card" id="card-dist-table">
+        <div class="card-header">
+          <h3><span class="card-icon">📋</span> Distance Table</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="dist-table-wrapper">
+            <table class="dist-table" aria-label="Distance table">
+              <thead>
+                <tr><th>Node</th><th>Distance</th><th>Previous</th></tr>
+              </thead>
+              <tbody id="dist-table-body">
+                <tr><td colspan="3" class="text-center text-muted" style="padding:16px">Run an algorithm to see the distance table</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Pseudocode ---- -->
+      <div class="card" id="card-pseudocode">
+        <div class="card-header">
+          <h3><span class="card-icon">📝</span> Pseudocode</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="pseudocode-wrapper">
+            <div class="pseudocode" id="pseudocode-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Step Log ---- -->
+      <div class="card" id="card-step-log">
+        <div class="card-header">
+          <h3><span class="card-icon">📜</span> Step Log</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="step-log-wrapper" id="step-log-content">
+            <!-- Step entries appended dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Complexity ---- -->
+      <div class="card" id="card-complexity">
+        <div class="card-header">
+          <h3><span class="card-icon">📐</span> Complexity</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body" id="complexity-content">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- ---- Graph Tools ---- -->
+      <div class="card" id="card-graph-tools">
+        <div class="card-header">
+          <h3><span class="card-icon">🔧</span> Graph Tools</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+
+          <!-- Directed toggle -->
+          <label class="toggle-switch" id="label-directed">
+            <span>Directed</span>
+            <input type="checkbox" id="directed-toggle">
+            <span class="toggle-track"></span>
+          </label>
+
+          <!-- Sample graphs -->
+          <div class="form-group">
+            <label for="sample-select">Sample Graphs</label>
+            <select id="sample-select" aria-label="Load a sample graph">
+              <option value="">— Choose —</option>
+              <option value="small">Small (5 nodes)</option>
+              <option value="medium">Medium (8 nodes)</option>
+              <option value="negative">Negative Edge (6 nodes, directed)</option>
+            </select>
+          </div>
+
+          <!-- Random graph -->
+          <div class="form-group">
+            <label>Random Graph</label>
+            <div class="form-row">
+              <input type="number" id="random-nodes" value="6" min="2" max="26" aria-label="Number of nodes" style="width:70px" placeholder="Nodes">
+              <input type="number" id="random-edges" value="9" min="1" max="100" aria-label="Number of edges" style="width:70px" placeholder="Edges">
+              <button class="btn btn-sm" id="btn-random-graph" data-tooltip="Generate random graph">🎲 Generate</button>
+            </div>
+          </div>
+
+          <!-- Edge list input -->
+          <div class="form-group">
+            <label for="edgelist-input">Edge List <span class="text-muted">(one per line: A B 5)</span></label>
+            <textarea id="edgelist-input" rows="3" placeholder="A B 4&#10;A C 2&#10;B D 5" aria-label="Edge list input"></textarea>
+            <div class="edge-list-errors hidden" id="edgelist-errors"></div>
+            <button class="btn btn-sm w-full" id="btn-apply-edgelist">Apply Edge List</button>
+          </div>
+
+          <!-- Import / Export -->
+          <div class="form-row">
+            <button class="btn btn-sm flex-1" id="btn-export" data-tooltip="Export graph as JSON">📤 Export</button>
+            <button class="btn btn-sm flex-1" id="btn-import" data-tooltip="Import graph from JSON">📥 Import</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Color Legend ---- -->
+      <div class="card" id="card-legend">
+        <div class="card-header">
+          <h3><span class="card-icon">🎨</span> Legend</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div class="legend-grid">
+            <div class="legend-item">
+              <span class="legend-swatch swatch-source"></span> Source
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch swatch-dest"></span> Destination
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch swatch-current"></span> Current Node
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch swatch-visited"></span> Visited
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch swatch-path"></span> Shortest Path
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch swatch-default"></span> Unvisited
+            </div>
+            <div class="legend-item">
+              <span class="legend-line line-relaxing"></span> Relaxing Edge
+            </div>
+            <div class="legend-item">
+              <span class="legend-line line-path"></span> Path Edge
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---- Keyboard Shortcuts ---- -->
+      <div class="card collapsed" id="card-shortcuts">
+        <div class="card-header">
+          <h3><span class="card-icon">⌨️</span> Shortcuts</h3>
+          <span class="card-toggle">▾</span>
+        </div>
+        <div class="card-body">
+          <div style="font-size:0.8rem; color: var(--text-secondary); display:flex; flex-direction:column; gap:4px;">
+            <div><kbd class="kbd">Space</kbd> Play / Pause</div>
+            <div><kbd class="kbd">→</kbd> Step Forward</div>
+            <div><kbd class="kbd">←</kbd> Step Back</div>
+            <div><kbd class="kbd">Esc</kbd> Cancel / Close</div>
+            <div>Double-click weight pill to edit</div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+</div>
+
+<!-- ============================================================
+     COMPARE MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="compare-modal" role="dialog" aria-label="Algorithm comparison">
+  <div class="modal" style="max-width: 650px;">
+    <div class="modal-title">⚖️ Algorithm Comparison</div>
+    <div class="compare-table-wrapper" id="compare-body">
+      <!-- Filled by JS -->
+    </div>
+    <div style="margin-top: var(--space-lg); text-align: right;">
+      <button class="btn" id="compare-close">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     FIRST-TIME ONBOARDING OVERLAY
+     ============================================================ -->
+<div class="onboarding-overlay visible" id="onboarding-overlay" role="dialog" aria-label="Getting started">
+  <div class="onboarding-card">
+    <h2>Welcome to PathFinder!</h2>
+    <p class="onboarding-sub">An interactive shortest path algorithm visualizer</p>
+
+    <div class="onboarding-steps">
+      <div class="onboarding-step">
+        <div class="onboarding-step-num">1</div>
+        <div class="onboarding-step-text"><strong>Create a graph</strong> — Click the canvas to add nodes, then drag between nodes to create edges with weights.</div>
+      </div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-num">2</div>
+        <div class="onboarding-step-text"><strong>Set source & destination</strong> — Use the 🟢 Source and 🔴 Dest buttons, then click a node.</div>
+      </div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-num">3</div>
+        <div class="onboarding-step-text"><strong>Pick an algorithm</strong> — Choose from Dijkstra, Bellman-Ford, BFS, or A* in the sidebar.</div>
+      </div>
+      <div class="onboarding-step">
+        <div class="onboarding-step-num">4</div>
+        <div class="onboarding-step-text"><strong>Watch it run!</strong> — Hit "Run Algorithm" and use the playback controls to step through the visualization.</div>
+      </div>
+    </div>
+
+    <div class="onboarding-actions">
+      <button class="btn" id="onboarding-skip">Skip</button>
+      <button class="btn btn-primary" id="onboarding-start">Get Started</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+
+<!-- ============================================================
+     SCRIPTS (order matters: graph → algorithms → app)
+     ============================================================ -->
+<script src="graph.js"></script>
+<script src="algorithms.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
