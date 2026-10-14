@@ -1,7 +1,24 @@
-# OS generated files
+# Operating System Files
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Editor & IDE folders
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+*.env
 
 # Logs and temporary files
 *.log
